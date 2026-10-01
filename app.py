@@ -2,204 +2,1000 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
+
+# =========================================================
+# PAGE SETTINGS
+# =========================================================
+
 st.set_page_config(
-    page_title="Patient Health Dashboard",
+    page_title="Patient Health Record Dashboard",
     page_icon="🏥",
     layout="wide"
 )
 
-data = pd.read_csv("patient_dashboard_data.csv")
 
-# ---------------- CSS ----------------
+# =========================================================
+# CSS
+# =========================================================
 
 st.markdown("""
 <style>
 
+/* Main page */
 .stApp {
-    background: linear-gradient(135deg, #06142f, #0a1f4d, #10143b);
-    color: white;
+    background-color: white;
 }
 
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #06132d, #0a2452);
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: #f5f7fa !important;
 }
 
-.block-container {
-    padding-top: 1.5rem;
-    max-width: 1500px;
+
+/* Sidebar text */
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] label {
+    color: #222222 !important;
 }
 
-.hero {
-    background: linear-gradient(
-        100deg,
-        #123c9c,
-        #6335b5,
-        #087f91
-    );
 
-    padding: 30px;
-    border-radius: 22px;
-    margin-bottom: 25px;
-
-    box-shadow: 0 10px 35px rgba(0,0,0,0.4);
+/* Sidebar select boxes */
+section[data-testid="stSidebar"] [data-baseweb="select"] > div {
+    background-color: white !important;
+    color: #222222 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 7px !important;
 }
 
-.hero-title {
-    font-size: 38px;
-    font-weight: 800;
+
+/* Selected value */
+section[data-testid="stSidebar"] [data-baseweb="select"] span {
+    color: #222222 !important;
 }
 
-.hero-sub {
-    font-size: 16px;
-    color: #dce9ff;
-    margin-top: 8px;
+
+/* Dropdown arrow */
+section[data-testid="stSidebar"] [data-baseweb="select"] svg {
+    fill: #222222 !important;
+    color: #222222 !important;
 }
 
-.card {
-    padding: 22px;
-    border-radius: 18px;
-    color: white;
-    min-height: 125px;
 
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+/* Dropdown menu */
+[data-baseweb="popover"] {
+    background-color: white !important;
 }
 
-.blue {
-    background: linear-gradient(135deg,#1674e8,#123b9e);
+
+/* Dropdown options */
+[data-baseweb="popover"] li {
+    background-color: white !important;
+    color: #222222 !important;
 }
 
-.purple {
-    background: linear-gradient(135deg,#a348ec,#4b238e);
+
+/* Dropdown hover */
+[data-baseweb="popover"] li:hover {
+    background-color: #eaf2fb !important;
+    color: #222222 !important;
 }
 
-.green {
-    background: linear-gradient(135deg,#00b8a9,#08746c);
+
+/* KPI cards */
+[data-testid="stMetric"] {
+    background-color: #f8fbff !important;
+    border: 1px solid #d8e2ec !important;
+    border-radius: 8px !important;
+    padding: 12px !important;
 }
 
-.orange {
-    background: linear-gradient(135deg,#f6a62b,#a75812);
+
+/* KPI label */
+[data-testid="stMetricLabel"] {
+    color: #555555 !important;
 }
 
-.card-title {
-    font-size: 15px;
+
+/* KPI value */
+[data-testid="stMetricValue"] {
+    color: #1f4e79 !important;
 }
 
-.card-value {
-    font-size: 30px;
-    font-weight: 800;
-    margin-top: 8px;
+
+/* Headings */
+h1,
+h2,
+h3 {
+    color: #1f4e79 !important;
 }
 
-.section {
-    background: rgba(8,30,70,0.75);
-    border: 1px solid rgba(80,150,255,0.35);
 
-    border-radius: 20px;
-    padding: 20px;
-    margin-top: 25px;
-
-    box-shadow: 0 8px 28px rgba(0,0,0,0.25);
-}
-
-.small-card {
-    background: linear-gradient(135deg,#182d70,#26366f);
-
-    border-radius: 16px;
-    padding: 17px;
-
-    border: 1px solid rgba(130,160,255,0.35);
-}
-
-.small-title {
-    font-size: 13px;
-    color: #b9ceff;
-}
-
-.small-value {
-    font-size: 23px;
-    font-weight: 700;
-    margin-top: 5px;
-}
-
-.footer {
-    text-align: center;
-    padding: 25px;
-    color: #9fc6ff;
+/* Normal text */
+p {
+    color: #333333;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
 
-# ---------------- SIDEBAR ----------------
+# =========================================================
+# LOAD DATA
+# =========================================================
 
-st.sidebar.markdown("## 🏥 Patient Analytics")
-st.sidebar.caption("Interactive healthcare dashboard")
+@st.cache_data
+def load_data():
 
-st.sidebar.markdown("---")
+    df = pd.read_csv("patient_dashboard_data.csv")
 
-st.sidebar.markdown("### 🔎 Filters")
+    # Create age group if not already available
+    if "age_group" not in df.columns:
 
-insurance = st.sidebar.multiselect(
+        df["age_group"] = pd.cut(
+            df["age"],
+            bins=[0, 18, 35, 50, 65, 100],
+            labels=[
+                "0-18",
+                "19-35",
+                "36-50",
+                "51-65",
+                "66+"
+            ]
+        )
+
+    return df
+
+
+data = load_data()
+
+
+# =========================================================
+# CHART FORMAT
+# =========================================================
+
+def format_chart(fig, x_title, y_title):
+
+    fig.update_layout(
+
+        template="simple_white",
+
+        paper_bgcolor="white",
+
+        plot_bgcolor="white",
+
+        font=dict(
+            family="Arial",
+            size=13,
+            color="#222222"
+        ),
+
+        xaxis=dict(
+
+            title=x_title,
+
+            title_font=dict(
+                color="#222222",
+                size=14
+            ),
+
+            tickfont=dict(
+                color="#222222",
+                size=12
+            ),
+
+            showline=True,
+
+            linecolor="#333333",
+
+            tickcolor="#333333",
+
+            gridcolor="#eeeeee"
+        ),
+
+        yaxis=dict(
+
+            title=y_title,
+
+            title_font=dict(
+                color="#222222",
+                size=14
+            ),
+
+            tickfont=dict(
+                color="#222222",
+                size=12
+            ),
+
+            showline=True,
+
+            linecolor="#333333",
+
+            tickcolor="#333333",
+
+            gridcolor="#eeeeee"
+        ),
+
+        title=dict(
+            font=dict(
+                color="#1f4e79",
+                size=18
+            )
+        ),
+
+        margin=dict(
+            l=75,
+            r=30,
+            t=70,
+            b=80
+        ),
+
+        hoverlabel=dict(
+            bgcolor="white",
+            font_color="#222222"
+        )
+    )
+
+    return fig
+
+
+# =========================================================
+# SIDEBAR FILTERS
+# =========================================================
+
+with st.sidebar:
+
+    st.header("Dashboard Filters")
+
+    st.write(
+        "Select values to filter the dashboard."
+    )
+
+    st.divider()
+
+
+    # -----------------------------------------------------
+    # INSURANCE FILTER
+    # -----------------------------------------------------
+
+    insurance_values = sorted(
+        data["insurance_type"]
+        .dropna()
+        .astype(str)
+        .unique()
+        .tolist()
+    )
+
+    insurance = st.selectbox(
+        "Insurance Type",
+        ["All"] + insurance_values
+    )
+
+
+    # -----------------------------------------------------
+    # ADMISSION FILTER
+    # -----------------------------------------------------
+
+    admission_values = sorted(
+        data["admit_type"]
+        .dropna()
+        .astype(str)
+        .unique()
+        .tolist()
+    )
+
+    admission = st.selectbox(
+        "Admission Type",
+        ["All"] + admission_values
+    )
+
+
+    # -----------------------------------------------------
+    # HOSPITAL FILTER
+    # -----------------------------------------------------
+
+    hospital_values = sorted(
+        data["hospital_tier"]
+        .dropna()
+        .astype(str)
+        .unique()
+        .tolist()
+    )
+
+    hospital = st.selectbox(
+        "Hospital Tier",
+        ["All"] + hospital_values
+    )
+
+
+    # -----------------------------------------------------
+    # AGE FILTER
+    # -----------------------------------------------------
+
+    age_values = [
+        "All",
+        "0-18",
+        "19-35",
+        "36-50",
+        "51-65",
+        "66+"
+    ]
+
+    age = st.selectbox(
+        "Age Group",
+        age_values
+    )
+
+
+    # -----------------------------------------------------
+    # GENDER FILTER
+    # -----------------------------------------------------
+
+    gender_values = sorted(
+        data["gender"]
+        .dropna()
+        .astype(str)
+        .unique()
+        .tolist()
+    )
+
+    gender = st.selectbox(
+        "Gender",
+        ["All"] + gender_values
+    )
+
+
+# =========================================================
+# APPLY FILTERS
+# =========================================================
+
+df = data.copy()
+
+
+# Insurance
+
+if insurance != "All":
+
+    df = df[
+        df["insurance_type"].astype(str) == insurance
+    ]
+
+
+# Admission
+
+if admission != "All":
+
+    df = df[
+        df["admit_type"].astype(str) == admission
+    ]
+
+
+# Hospital tier
+
+if hospital != "All":
+
+    df = df[
+        df["hospital_tier"].astype(str) == hospital
+    ]
+
+
+# Age
+
+if age != "All":
+
+    df = df[
+        df["age_group"].astype(str) == age
+    ]
+
+
+# Gender
+
+if gender != "All":
+
+    df = df[
+        df["gender"].astype(str) == gender
+    ]
+
+
+# =========================================================
+# HEADER
+# =========================================================
+
+st.title(
+    "Patient Health Record Dashboard"
+)
+
+st.write(
+    "Analysis of hospital admissions and 30-day readmissions."
+)
+
+st.divider()
+
+
+# =========================================================
+# SUMMARY
+# =========================================================
+
+st.header("Summary")
+
+
+total_admissions = len(df)
+
+
+total_readmissions = int(
+    df["readmitted_30d"].sum()
+)
+
+
+if len(df) > 0:
+
+    readmission_rate = (
+        df["readmitted_30d"].mean() * 100
+    )
+
+    avg_los = (
+        df["los_days"].mean()
+    )
+
+    avg_cost = (
+        df["total_cost_inr"].mean()
+    )
+
+else:
+
+    readmission_rate = 0
+
+    avg_los = 0
+
+    avg_cost = 0
+
+
+# =========================================================
+# KPI CARDS
+# =========================================================
+
+c1, c2, c3, c4, c5 = st.columns(5)
+
+
+with c1:
+
+    st.metric(
+        "Total Admissions",
+        f"{total_admissions:,}"
+    )
+
+
+with c2:
+
+    st.metric(
+        "Readmissions",
+        f"{total_readmissions:,}"
+    )
+
+
+with c3:
+
+    st.metric(
+        "Readmission Rate",
+        f"{readmission_rate:.2f}%"
+    )
+
+
+with c4:
+
+    st.metric(
+        "Average LOS",
+        f"{avg_los:.2f} days"
+    )
+
+
+with c5:
+
+    st.metric(
+        "Average Cost",
+        f"₹{avg_cost:,.0f}"
+    )
+
+
+# =========================================================
+# READMISSION ANALYSIS
+# =========================================================
+
+st.divider()
+
+st.header("Readmission Analysis")
+
+
+col1, col2 = st.columns(2)
+
+
+# =========================================================
+# AGE GROUP
+# =========================================================
+
+with col1:
+
+    age_data = (
+        df.groupby(
+            "age_group",
+            observed=False
+        )["readmitted_30d"]
+        .mean()
+        .reset_index()
+    )
+
+    age_data["readmitted_30d"] = (
+        age_data["readmitted_30d"] * 100
+    )
+
+    fig_age = px.bar(
+
+        age_data,
+
+        x="age_group",
+
+        y="readmitted_30d",
+
+        title="Readmission Rate by Age Group",
+
+        text="readmitted_30d",
+
+        labels={
+            "age_group": "Age Group",
+            "readmitted_30d": "Readmission Rate (%)"
+        }
+    )
+
+    fig_age.update_traces(
+
+        marker_color="#4F81BD",
+
+        texttemplate="%{text:.2f}%",
+
+        textposition="outside",
+
+        textfont=dict(
+            color="#222222",
+            size=12
+        )
+    )
+
+    fig_age = format_chart(
+        fig_age,
+        "Age Group",
+        "Readmission Rate (%)"
+    )
+
+    st.plotly_chart(
+        fig_age,
+        use_container_width=True
+    )
+
+
+# =========================================================
+# INSURANCE
+# =========================================================
+
+with col2:
+
+    insurance_data = (
+        df.groupby(
+            "insurance_type"
+        )["readmitted_30d"]
+        .mean()
+        .reset_index()
+    )
+
+    insurance_data["readmitted_30d"] = (
+        insurance_data["readmitted_30d"] * 100
+    )
+
+    fig_insurance = px.bar(
+
+        insurance_data,
+
+        x="insurance_type",
+
+        y="readmitted_30d",
+
+        title="Readmission Rate by Insurance Type",
+
+        text="readmitted_30d",
+
+        labels={
+            "insurance_type": "Insurance Type",
+            "readmitted_30d": "Readmission Rate (%)"
+        }
+    )
+
+    fig_insurance.update_traces(
+
+        marker_color="#70AD47",
+
+        texttemplate="%{text:.2f}%",
+
+        textposition="outside",
+
+        textfont=dict(
+            color="#222222",
+            size=12
+        )
+    )
+
+    fig_insurance = format_chart(
+        fig_insurance,
+        "Insurance Type",
+        "Readmission Rate (%)"
+    )
+
+    st.plotly_chart(
+        fig_insurance,
+        use_container_width=True
+    )
+
+
+# =========================================================
+# PATIENT HISTORY
+# =========================================================
+
+st.header("Patient History")
+
+
+col3, col4 = st.columns(2)
+
+
+# =========================================================
+# PREVIOUS ADMISSIONS
+# =========================================================
+
+with col3:
+
+    previous_data = (
+        df.groupby(
+            "prev_admissions"
+        )["readmitted_30d"]
+        .mean()
+        .reset_index()
+    )
+
+    previous_data["readmitted_30d"] = (
+        previous_data["readmitted_30d"] * 100
+    )
+
+    fig_previous = px.bar(
+
+        previous_data,
+
+        x="prev_admissions",
+
+        y="readmitted_30d",
+
+        title="Previous Admissions vs Readmission",
+
+        text="readmitted_30d",
+
+        labels={
+            "prev_admissions": "Previous Admissions",
+            "readmitted_30d": "Readmission Rate (%)"
+        }
+    )
+
+    fig_previous.update_traces(
+
+        marker_color="#ED7D31",
+
+        texttemplate="%{text:.1f}%",
+
+        textposition="outside",
+
+        textfont=dict(
+            color="#222222",
+            size=12
+        )
+    )
+
+    fig_previous = format_chart(
+        fig_previous,
+        "Previous Admissions",
+        "Readmission Rate (%)"
+    )
+
+    st.plotly_chart(
+        fig_previous,
+        use_container_width=True
+    )
+
+
+# =========================================================
+# COMORBIDITY
+# =========================================================
+
+with col4:
+
+    comorbidity_data = (
+        df.groupby(
+            "comorbidity_count"
+        )["readmitted_30d"]
+        .mean()
+        .reset_index()
+    )
+
+    comorbidity_data["readmitted_30d"] = (
+        comorbidity_data["readmitted_30d"] * 100
+    )
+
+    fig_comorbidity = px.bar(
+
+        comorbidity_data,
+
+        x="comorbidity_count",
+
+        y="readmitted_30d",
+
+        title="Comorbidity Count vs Readmission",
+
+        text="readmitted_30d",
+
+        labels={
+            "comorbidity_count": "Comorbidity Count",
+            "readmitted_30d": "Readmission Rate (%)"
+        }
+    )
+
+    fig_comorbidity.update_traces(
+
+        marker_color="#A5A5A5",
+
+        texttemplate="%{text:.1f}%",
+
+        textposition="outside",
+
+        textfont=dict(
+            color="#222222",
+            size=12
+        )
+    )
+
+    fig_comorbidity = format_chart(
+        fig_comorbidity,
+        "Comorbidity Count",
+        "Readmission Rate (%)"
+    )
+
+    st.plotly_chart(
+        fig_comorbidity,
+        use_container_width=True
+    )
+
+
+# =========================================================
+# HOSPITAL ANALYSIS
+# =========================================================
+
+st.header("Hospital Analysis")
+
+
+col5, col6 = st.columns(2)
+
+
+# =========================================================
+# HOSPITAL TIER
+# =========================================================
+
+with col5:
+
+    hospital_data = (
+        df.groupby(
+            "hospital_tier"
+        )["readmitted_30d"]
+        .mean()
+        .reset_index()
+    )
+
+    hospital_data["readmitted_30d"] = (
+        hospital_data["readmitted_30d"] * 100
+    )
+
+    fig_hospital = px.bar(
+
+        hospital_data,
+
+        x="hospital_tier",
+
+        y="readmitted_30d",
+
+        title="Readmission Rate by Hospital Tier",
+
+        text="readmitted_30d",
+
+        labels={
+            "hospital_tier": "Hospital Tier",
+            "readmitted_30d": "Readmission Rate (%)"
+        }
+    )
+
+    fig_hospital.update_traces(
+
+        marker_color="#5B9BD5",
+
+        texttemplate="%{text:.2f}%",
+
+        textposition="outside",
+
+        textfont=dict(
+            color="#222222",
+            size=12
+        )
+    )
+
+    fig_hospital = format_chart(
+        fig_hospital,
+        "Hospital Tier",
+        "Readmission Rate (%)"
+    )
+
+    st.plotly_chart(
+        fig_hospital,
+        use_container_width=True
+    )
+
+
+# =========================================================
+# WARD TYPE
+# =========================================================
+
+with col6:
+
+    ward_data = (
+        df.groupby(
+            "ward_type"
+        )["readmitted_30d"]
+        .mean()
+        .reset_index()
+    )
+
+    ward_data["readmitted_30d"] = (
+        ward_data["readmitted_30d"] * 100
+    )
+
+    fig_ward = px.bar(
+
+        ward_data,
+
+        x="ward_type",
+
+        y="readmitted_30d",
+
+        title="Readmission Rate by Ward Type",
+
+        text="readmitted_30d",
+
+        labels={
+            "ward_type": "Ward Type",
+            "readmitted_30d": "Readmission Rate (%)"
+        }
+    )
+
+    fig_ward.update_traces(
+
+        marker_color="#FFC000",
+
+        texttemplate="%{text:.2f}%",
+
+        textposition="outside",
+
+        textfont=dict(
+            color="#222222",
+            size=12
+        )
+    )
+
+    fig_ward = format_chart(
+        fig_ward,
+        "Ward Type",
+        "Readmission Rate (%)"
+    )
+
+    st.plotly_chart(
+        fig_ward,
+        use_container_width=True
+    )
+
+
+# =========================================================
+# COST ANALYSIS
+# =========================================================
+
+st.header("Treatment Cost Analysis")
+
+
+cost_data = (
+    df.groupby(
+        "insurance_type"
+    )[
+        [
+            "total_cost_inr",
+            "out_of_pocket_inr"
+        ]
+    ]
+    .mean()
+    .reset_index()
+)
+
+
+cost_data = cost_data.melt(
+
+    id_vars="insurance_type",
+
+    var_name="Cost Type",
+
+    value_name="Average Cost"
+)
+
+
+fig_cost = px.bar(
+
+    cost_data,
+
+    x="insurance_type",
+
+    y="Average Cost",
+
+    color="Cost Type",
+
+    barmode="group",
+
+    title="Average Cost by Insurance Type",
+
+    text="Average Cost",
+
+    labels={
+        "insurance_type": "Insurance Type",
+        "Average Cost": "Average Cost (INR)",
+        "Cost Type": "Cost Type"
+    },
+
+    color_discrete_sequence=[
+        "#4472C4",
+        "#ED7D31"
+    ]
+)
+
+
+fig_cost.update_traces(
+
+    texttemplate="₹%{text:,.0f}",
+
+    textposition="outside",
+
+    textfont=dict(
+        color="#222222",
+        size=11
+    )
+)
+
+
+fig_cost = format_chart(
+    fig_cost,
     "Insurance Type",
-    sorted(data["insurance_type"].unique()),
-    default=sorted(data["insurance_type"].unique())
-)
-
-admission = st.sidebar.multiselect(
-    "Admission Type",
-    sorted(data["admit_type"].unique()),
-    default=sorted(data["admit_type"].unique())
-)
-
-tier = st.sidebar.multiselect(
-    "Hospital Tier",
-    sorted(data["hospital_tier"].unique()),
-    default=sorted(data["hospital_tier"].unique())
+    "Average Cost (INR)"
 )
 
 
-filtered = data[
-    data["insurance_type"].isin(insurance)
-    &
-    data["admit_type"].isin(admission)
-    &
-    data["hospital_tier"].isin(tier)
-]
-
-
-# ---------------- HEADER ----------------
-
-st.markdown("""
-<div class="hero">
-
-<div class="hero-title">
- Patient Health Record Dashboard
-</div>
-
-<div class="hero-sub">
-Patient admission, readmission and healthcare analytics
-</div>
-
-</div>
-""", unsafe_allow_html=True)
-
-
-# ---------------- KPI ----------------
-
-st.markdown("## 📊 Key Performance Indicators")
-
-total = len(filtered)
-
-readmissions = int(
-    filtered["readmitted_30d"].sum()
+st.plotly_chart(
+    fig_cost,
+    use_container_width=True
 )
 
-rate = (
-    filtered["readmitted_30d"].mean() * 100
-)
 
-avg_los = filtered["los_days"].mean()
+# =========================================================
+# CLINICAL INFORMATION
+# =========================================================
+
+st.header("Clinical Information")
 
 
 c1, c2, c3, c4 = st.columns(4)
@@ -207,419 +1003,123 @@ c1, c2, c3, c4 = st.columns(4)
 
 with c1:
 
-    st.markdown(f"""
-    <div class="card blue">
-
-    <div class="card-title">
-    👥 Total Admissions
-    </div>
-
-    <div class="card-value">
-    {total:,}
-    </div>
-
-    </div>
-    """, unsafe_allow_html=True)
+    st.metric(
+        "Average HbA1c",
+        f"{df['hba1c'].mean():.2f}"
+    )
 
 
 with c2:
 
-    st.markdown(f"""
-    <div class="card purple">
-
-    <div class="card-title">
-    ↩️ Readmissions
-    </div>
-
-    <div class="card-value">
-    {readmissions:,}
-    </div>
-
-    </div>
-    """, unsafe_allow_html=True)
+    st.metric(
+        "Average Creatinine",
+        f"{df['creatinine'].mean():.2f}"
+    )
 
 
 with c3:
 
-    st.markdown(f"""
-    <div class="card green">
-
-    <div class="card-title">
-    📈 Readmission Rate
-    </div>
-
-    <div class="card-value">
-    {rate:.2f}%
-    </div>
-
-    </div>
-    """, unsafe_allow_html=True)
+    st.metric(
+        "Average Haemoglobin",
+        f"{df['haemoglobin'].mean():.2f}"
+    )
 
 
 with c4:
 
-    st.markdown(f"""
-    <div class="card orange">
-
-    <div class="card-title">
-    🛏️ Average LOS
-    </div>
-
-    <div class="card-value">
-    {avg_los:.2f} days
-    </div>
-
-    </div>
-    """, unsafe_allow_html=True)
-
-
-# ---------------- READMISSION ----------------
-
-st.markdown("""
-<div class="section">
-<h2>📊 Readmission Analysis</h2>
-</div>
-""", unsafe_allow_html=True)
-
-
-col1, col2 = st.columns(2)
-
-
-# Age
-
-with col1:
-
-    age = (
-        filtered
-        .groupby("age_group", observed=False)
-        ["readmitted_30d"]
-        .mean() * 100
-    )
-
-    fig = px.bar(
-        x=age.index,
-        y=age.values,
-        title="Readmission by Age Group",
-        labels={
-            "x": "Age Group",
-            "y": "Readmission Rate (%)"
-        },
-        color=age.values,
-        color_continuous_scale="Blues"
-    )
-
-    fig.update_layout(
-        template="plotly_dark",
-        showlegend=False,
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)"
-    )
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True
+    st.metric(
+        "Average Systolic BP",
+        f"{df['systolic_bp'].mean():.2f}"
     )
 
 
-# Insurance
+# =========================================================
+# OBSERVATIONS
+# =========================================================
 
-with col2:
+st.divider()
 
-    insurance_rate = (
-        filtered
-        .groupby("insurance_type")
-        ["readmitted_30d"]
-        .mean() * 100
-    )
+st.header("Observations")
 
-    fig = px.pie(
-        values=insurance_rate.values,
-        names=insurance_rate.index,
-        hole=0.55,
-        title="Readmission by Insurance"
-    )
 
-    fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)"
-    )
+if len(df) > 0:
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True
+    age_rates = (
+        df.groupby(
+            "age_group",
+            observed=False
+        )["readmitted_30d"]
+        .mean()
+        .dropna()
     )
 
 
-col3, col4 = st.columns(2)
-
-
-# Admission Type
-
-with col3:
-
-    admission_rate = (
-        filtered
-        .groupby("admit_type")
-        ["readmitted_30d"]
-        .mean() * 100
-    )
-
-    fig = px.bar(
-        x=admission_rate.index,
-        y=admission_rate.values,
-        title="Readmission by Admission Type",
-        color=admission_rate.values,
-        color_continuous_scale="Turbo"
-    )
-
-    fig.update_layout(
-        template="plotly_dark",
-        showlegend=False,
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)"
-    )
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True
+    previous_rates = (
+        df.groupby(
+            "prev_admissions"
+        )["readmitted_30d"]
+        .mean()
     )
 
 
-# Hospital Tier
+    if len(age_rates) > 0:
 
-with col4:
+        highest_age = age_rates.idxmax()
 
-    tier_rate = (
-        filtered
-        .groupby("hospital_tier")
-        ["readmitted_30d"]
-        .mean() * 100
-    )
+        st.write(
+            f"• Highest observed readmission rate "
+            f"among age groups: **{highest_age}**."
+        )
 
-    fig = px.bar(
-        x=tier_rate.index,
-        y=tier_rate.values,
-        title="Readmission by Hospital Tier",
-        color=tier_rate.values,
-        color_continuous_scale="Purples"
-    )
 
-    fig.update_layout(
-        template="plotly_dark",
-        showlegend=False,
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)"
-    )
+    if len(previous_rates) > 0:
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True
+        highest_previous = previous_rates.idxmax()
+
+        st.write(
+            f"• Highest observed readmission rate "
+            f"for previous admissions: **{highest_previous}**."
+        )
+
+
+    st.write(
+        f"• Records after applying filters: "
+        f"**{len(df):,}**."
     )
 
 
-# ---------------- COST ----------------
+# =========================================================
+# DOWNLOAD
+# =========================================================
 
-st.markdown("""
-<div class="section">
-<h2>💰 Cost Analysis</h2>
-</div>
-""", unsafe_allow_html=True)
+st.divider()
 
-
-avg_cost = filtered["total_cost_inr"].mean()
-
-avg_oop = filtered["out_of_pocket_inr"].mean()
+st.header("Download Data")
 
 
-c1, c2 = st.columns(2)
-
-
-with c1:
-
-    st.markdown(f"""
-    <div class="small-card">
-
-    <div class="small-title">
-    💰 Average Treatment Cost
-    </div>
-
-    <div class="small-value">
-    ₹{avg_cost:,.2f}
-    </div>
-
-    </div>
-    """, unsafe_allow_html=True)
-
-
-with c2:
-
-    st.markdown(f"""
-    <div class="small-card">
-
-    <div class="small-title">
-    💳 Average Out-of-Pocket Cost
-    </div>
-
-    <div class="small-value">
-    ₹{avg_oop:,.2f}
-    </div>
-
-    </div>
-    """, unsafe_allow_html=True)
-
-
-cost = (
-    filtered
-    .groupby("insurance_type")
-    [["total_cost_inr",
-      "out_of_pocket_inr"]]
-    .mean()
-    .reset_index()
+csv_file = df.to_csv(
+    index=False
 )
-
-
-cost = cost.rename(
-    columns={
-        "total_cost_inr": "Treatment Cost",
-        "out_of_pocket_inr": "Out-of-Pocket"
-    }
-)
-
-
-cost_long = cost.melt(
-    id_vars="insurance_type",
-    var_name="Cost Type",
-    value_name="Amount"
-)
-
-
-fig = px.bar(
-    cost_long,
-    x="insurance_type",
-    y="Amount",
-    color="Cost Type",
-    barmode="group",
-    title="Average Cost by Insurance Type"
-)
-
-fig.update_layout(
-    template="plotly_dark",
-    paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="rgba(0,0,0,0)"
-)
-
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
-
-
-# ---------------- CLINICAL ----------------
-
-st.markdown("""
-<div class="section">
-<h2>🩺 Clinical Analysis</h2>
-</div>
-""", unsafe_allow_html=True)
-
-
-clinical = {
-    "HbA1c": filtered["hba1c"].mean(),
-    "Creatinine": filtered["creatinine"].mean(),
-    "Haemoglobin": filtered["haemoglobin"].mean(),
-    "Systolic BP": filtered["systolic_bp"].mean()
-}
-
-
-cols = st.columns(4)
-
-
-for col, (name, value) in zip(
-    cols,
-    clinical.items()
-):
-
-    with col:
-
-        st.markdown(f"""
-        <div class="small-card">
-
-        <div class="small-title">
-        🩺 {name}
-        </div>
-
-        <div class="small-value">
-        {value:.2f}
-        </div>
-
-        </div>
-        """, unsafe_allow_html=True)
-
-
-clinical_df = pd.DataFrame({
-    "Indicator": list(clinical.keys()),
-    "Average Value": list(clinical.values())
-})
-
-
-fig = px.bar(
-    clinical_df,
-    x="Indicator",
-    y="Average Value",
-    color="Average Value",
-    color_continuous_scale="Viridis",
-    title="Clinical Indicator Comparison"
-)
-
-
-fig.update_layout(
-    template="plotly_dark",
-    showlegend=False,
-    paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="rgba(0,0,0,0)"
-)
-
-
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
-
-
-# ---------------- DOWNLOAD ----------------
-
-st.markdown("""
-<div class="section">
-
-<h2>📥 Download Data</h2>
-
-<p>
-Download the filtered patient dataset for further analysis.
-</p>
-
-</div>
-""", unsafe_allow_html=True)
 
 
 st.download_button(
-    "⬇️ Download Filtered Patient Data",
-    filtered.to_csv(index=False),
-    "filtered_patient_data.csv",
-    use_container_width=True
+
+    label="Download Filtered CSV",
+
+    data=csv_file,
+
+    file_name="filtered_patient_data.csv",
+
+    mime="text/csv"
 )
 
 
-# ---------------- FOOTER ----------------
+# =========================================================
+# FOOTER
+# =========================================================
 
-st.markdown("""
-<div class="footer">
+st.divider()
 
-Patient Health Record Dashboard
-<br><br>
-
-<b>
-Better Data → Better Insights → Better Healthcare
-</b>
-
-</div>
-""", unsafe_allow_html=True)
+st.caption(
+    "Patient Health Record Dashboard | P_090"
+)
